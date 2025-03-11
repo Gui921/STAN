@@ -119,7 +119,7 @@ class TemporalAttention(nn.Module):
         B, C, T, H, W = x.shape
         
         # Reshape x to (B, T, C*H*W) to flatten spatial dimensions
-        x_flat = x.view(B, T, C * H * W)  # Shape: (B, T, C*H*W)
+        x_flat = x.contiguous().view(B, T, C * H * W)  # Shape: (B, T, C*H*W)
         
         # Apply attention weights to frames (normalize with softmax)
         attn_scores = F.softmax(self.attn_weights, dim=-1)  # Shape: (T,)
