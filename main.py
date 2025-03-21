@@ -70,7 +70,7 @@ def inference_mode(checkpoint_path, video_path):
     visualize_temporal_attention(temporal_attention_map)
     overlay_high_attention(inputs,attention_maps=spatial_attention_map)
     end_time = time.time()
-    print(f"Done - check output folder! Execution time: {end_time - start_time:.4f} seconds")
+    print(f"Inference done - check output folder! Execution time: {end_time - start_time:.4f} seconds")
     
 
 def train_mode(train_name):
