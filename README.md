@@ -18,7 +18,7 @@ For the feature reconstruction we use a Transformer decoder/encoder. During trai
 
 During inference, different videos have different reconstruction error values, thus we use a dynamic threshold value: 
 
-$Threshold = \text{mean}(\text{lowest } 25 \text{\% errors}) + \text{std}(\text{errors})$
+$Threshold = \text{mean}(\text{lowest } 25\\% \text{ errors}) + \text{std}(\text{errors})$
 
 
 ![Feature Reconstruction Architecture](/images/FRM.png)
