@@ -20,6 +20,7 @@ class CustomKineticsDataset(Dataset):
 
         # Scan all class folders and collect video paths
         self.video_paths, self.labels, self.class_to_idx = self._scan_videos()
+        print(self.class_to_idx)
         
 
     def _scan_videos(self):
@@ -39,8 +40,16 @@ class CustomKineticsDataset(Dataset):
                     if video_file.endswith((".mp4", ".avi", ".mov")):
                         video_paths.append(os.path.join(class_path, video_file))
                         labels.append(idx)  # Assign class index
-   
-
+                '''
+                for video_folder in os.listdir(class_path):
+                    video_folder_path = os.path.join(class_path, video_folder)
+                    #print(video_folder_path)
+                    for video_file in os.listdir(video_folder_path):
+                        if video_file.endswith((".mp4", ".avi", ".mov")):
+                            video_paths.append(os.path.join(class_path, video_file))
+                            labels.append(idx)  # Assign class index
+                '''
+        #print(video_paths)
         return video_paths, labels, class_to_idx
 
     def __len__(self):
