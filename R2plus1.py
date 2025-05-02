@@ -140,6 +140,49 @@ class TemporalAttention(nn.Module):
 
         return weighted_x
 
+class SpatialAttention(nn.Module):
+    def __init__(self):
+        super(SpatialAttention, self).__init__()
+        # 1x1 convolution to generate attention maps
+        self.attn_conv = nn.Conv2d(3, 1, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        # Apply convolution to get attention maps
+        attn_map = torch.sigmoid(self.attn_conv(x))  # Shape: (B, 1, H, W)
+        return attn_map
+
+class TemporalAttention(nn.Module):
+    def __init__(self, num_frames=16):
+        super(TemporalAttention, self).__init__()
+        self.num_frames = num_frames
+        self.attn_weights = nn.Parameter(torch.randn(num_frames))
+
+    def forward(self, x):
+        # x: (B, C, T, H, W) where T is the number of frames (16)
+        B, C, T, H, W = x.shape
+        
+        # Reshape x to (B, T, C*H*W) to flatten spatial dimensions
+        x_flat = x.contiguous().view(B, T, C * H * W)  # Shape: (B, T, C*H*W)
+        
+        # Apply attention weights to frames (normalize with softmax)
+        attn_scores = F.softmax(self.attn_weights, dim=-1)  # Shape: (T,)
+        attn_scores = attn_scores.unsqueeze(0).unsqueeze(0)  # Shape: (1, 1, T)
+        
+        # Now we need to expand attn_scores to match the batch size
+        attn_scores = attn_scores.permute(0, 2, 1)
+        attn_scores = attn_scores.expand(B, T, 1)  # Shape: (B, T, 1)
+
+        # Reshape attn_scores to (B, T, C*H*W) so it can be applied to each frame's feature vector
+        attn_scores_expanded = attn_scores.expand(-1, -1, C * H * W)  # Shape: (B, T, C*H*W)
+
+        # Apply the attention scores to the flattened features
+        weighted_x = x_flat * attn_scores_expanded  # Shape: (B, T, C*H*W)
+        
+        # Reshape back to (B, C, T, H, W)
+        weighted_x = weighted_x.view(B, C, T, H, W)
+
+        return weighted_x
+
 
 class R2plus1_with_attention_v4(nn.Module):
     def __init__(self, nr_classes):
@@ -153,11 +196,35 @@ class R2plus1_with_attention_v4(nn.Module):
 
         self.spatial_attention = SpatialAttention()
         self.temporal_attention = TemporalAttention()
+        self.spatial_attention = SpatialAttention()
+        self.temporal_attention = TemporalAttention()
 
 
         self.classifier = nn.Linear(512, nr_classes)  # Concatenating pooled features and attention features
+        self.classifier = nn.Linear(512, nr_classes)  # Concatenating pooled features and attention features
 
     def forward(self, x):
+        # MODEL INPUT: torch.Size([64, 3, 16, 112, 112])
+        B, C, T, H, W = x.shape
+
+        spatial_attention_map = []
+
+        # Applying spatial attention to each frame 
+        for t in range(T):
+            frame = x[:, :, t, :, :]  # Shape: (B, C, H, W)
+            attn_map = self.spatial_attention(frame)  # Shape: (B, 1, H, W)
+            spatial_attention_map.append(attn_map)
+            x = x.clone()
+            x[:, :, t, :, :] = frame * attn_map
+        
+        spatial_attention_map = torch.stack(spatial_attention_map, dim=2)
+        # Apply temporal attention
+        temporal_features = self.temporal_attention(x)
+
+        attn_scores = torch.mean(temporal_features, dim=(1, 3, 4))
+        attn_scores = F.softmax(attn_scores, dim=-1)
+        temporal_attention_map = attn_scores.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)  # Shape: (B, 1, T, 1, 1)
+        x = x * temporal_attention_map
         # MODEL INPUT: torch.Size([64, 3, 16, 112, 112])
         B, C, T, H, W = x.shape
 
